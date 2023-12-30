@@ -1,0 +1,22 @@
+{
+  "model": {
+    "num_epochs": 100,
+    "batch_size": 32,
+    "save_path": "./model_weights/",
+    "comment": "The configurations for model training and testing."
+  },
+  "data": {
+    "img_path": "./dataset/JPEGImages/",
+    "label_path": "./dataset/Annotations/",
+
+    "train_start": "2007_000559",
+    "train_end": "2012_001051",
+    "test_start": "2012_001055",
+    "test_end": "2012_004308",
+
+    "img_format": ".jpg",
+    "label_format": ".xml",
+
+    "comment": "The paths and critical labels of the dataset."
+  }
+}
