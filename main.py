@@ -110,9 +110,9 @@ if __name__ == "__main__":
             no_improve_epochs = 0
             torch.save(model.state_dict(), config["model"]["save_path"])
         else:
-            no_improve_epochs += 1  # 没有改善，则计数器+1
+            no_improve_epochs += 1
 
-        if no_improve_epochs >= patience:
+        if no_improve_epochs >= es_epochs:
             console.log(f"[bold red]Early stopping at epoch {epoch+1}[/bold red]")
             break
 
