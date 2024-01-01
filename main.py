@@ -70,7 +70,7 @@ if __name__ == "__main__":
     num_epochs = config["model"]["num_epochs"]
 
     # for model validation
-    best_val_accuracy = float("inf")  # Best validation accuracy
+    best_val_accuracy = float(0)  # Best validation accuracy
     no_improve_epochs = 0   # Current epochs without validation improvement
     es_epochs = config["model"]["early_stop"]  # Early stopping epochs
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         valid_accuracy = calculate_accuracy(all_predictions, all_targets)
 
         console.log(f"[bold green]Epoch {epoch+1}/{num_epochs}, Training Loss: {losses.item()}, "
-                    f"Validation Accuracy: {valid_accuracy}%[/bold green]")
+                    f"Validation Accuracy: {valid_accuracy}[/bold green]")
 
         scheduler.step(valid_accuracy)
 
