@@ -67,7 +67,6 @@ if __name__ == "__main__":
     # Training
     console.log("[bold cyan]Begin training...[/bold cyan]")
 
-    model.train()
     num_epochs = config["model"]["num_epochs"]
 
     # for model validation
@@ -75,8 +74,8 @@ if __name__ == "__main__":
     no_improve_epochs = 0   # Current epochs without validation improvement
     es_epochs = config["model"]["early_stop"]  # Early stopping epochs
 
-
     for epoch in range(num_epochs):
+        model.train()
         for images, targets in track(train_loader, description=f"[cyan]Epoch {epoch+1}/{num_epochs}[/cyan]"):
             images = list(image.to(DEVICE) for image in images)
             targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
