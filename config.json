@@ -1,7 +1,11 @@
 {
   "model": {
     "num_epochs": 100,
-    "batch_size": 1,
+    "batch_size": 8,
+    "lr": 0.001,
+    "early_stop": 10,
+    "lr_patience": 3,
+    "lr_factor": 0.1,
     "save_path": "./model_weights/fasterrcnn_resnet50_fpn.pth",
     "comment": "The configurations for model training and testing."
   },
@@ -20,12 +24,10 @@
     "image_transform": {
       "transform": true,
 
-      "normalize": true,
-      "mean": [0.485, 0.456, 0.406],
-      "std": [0.229, 0.224, 0.225],
-
-      "resize": [800, 800]
+      "normalize": true
     },
+
+    "val_proportion": 0.2,
 
     "comment": "The paths and critical labels of the dataset."
   }

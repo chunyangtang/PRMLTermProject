@@ -1,7 +1,7 @@
 import os
 import xml.etree.ElementTree as ET
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, random_split
 from torchvision.io import read_image
 import torchvision.transforms as transforms
 from rich.console import Console
@@ -81,24 +81,22 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
         h_new, w_new = transform_config["resize"]
         transform_components.append(transforms.Resize((h_new, w_new)))
 
-
     # image transformation
     transform = transforms.Compose(transform_components)
     image = transform(image)
 
     # image normalization
     if "normalize" in transform_config and transform_config["normalize"]:
-        img = img / 255.0
+        image = image / 255.0
 
     # bounding box transformation
-    if bboxes is not None and should_resize:
+    if should_resize and bboxes is not None:
         bboxes[:, 0] = bboxes[:, 0] / w_orig * w_new
         bboxes[:, 1] = bboxes[:, 1] / h_orig * h_new
         bboxes[:, 2] = bboxes[:, 2] / w_orig * w_new
         bboxes[:, 3] = bboxes[:, 3] / h_orig * h_new
 
     return image, bboxes
-
 
 
 def load_dataset(configs: dict):
@@ -117,7 +115,6 @@ def load_dataset(configs: dict):
     train_start, train_end = configs["train_start"], configs["train_end"]
     test_start, test_end = configs["test_start"], configs["test_end"]
     img_format, label_format = configs["img_format"], configs["label_format"]
-
 
     # loading the image and label filenames
     img_list = os.listdir(img_path)
@@ -210,9 +207,14 @@ def load_dataset(configs: dict):
         train_dataset = MyImageDataset(train_images, train_labels)
         test_dataset = MyImageDataset(test_images, test_labels)
 
+        # splitting the train dataset into train and validation dataset
+        val_len = int(len(train_dataset) * configs["val_proportion"])
+        train_len = len(train_dataset) - val_len
+        train_dataset, val_dataset = random_split(train_dataset, [train_len, val_len])
+
         console.log("Datasets created.")
 
-    return train_dataset, test_dataset, label_strings
+    return train_dataset, val_dataset, test_dataset, label_strings
 
 
 # For testing
@@ -232,4 +234,4 @@ if __name__ == "__main__":
         "comment": "The paths and critical labels of the dataset."
     }
 
-    dataset_train, dataset_test, label_strs = load_dataset(config)
+    dataset_train, dataset_val, dataset_test, label_strs = load_dataset(config)
