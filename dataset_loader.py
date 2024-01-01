@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 import torch
 from torch.utils.data import Dataset
 from torchvision.io import read_image
+import torchvision.transforms as transforms
 from rich.console import Console
 from rich.progress import Progress
 
@@ -61,6 +62,45 @@ def xml_label_parser(xml_path: str) -> (list, list):
     return bboxes, labels
 
 
+def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.Tensor=None) -> (torch.Tensor, torch.Tensor):
+    """
+    Transform the image and bounding boxes according to the given configurations.
+    :param transform_config: the configurations of the image transformation
+    :param image: the image to be transformed
+    :param bboxes: the bounding boxes of the objects in the image
+    :return image: the transformed image
+    :return bboxes: the transformed bounding boxes
+    """
+
+    h_orig, w_orig = image.shape[1], image.shape[2]
+
+    transform_components = []
+
+    should_resize = "resize" in transform_config
+    if should_resize:
+        h_new, w_new = transform_config["resize"]
+        transform_components.append(transforms.Resize((h_new, w_new)))
+
+
+    # image transformation
+    transform = transforms.Compose(transform_components)
+    image = transform(image)
+
+    # image normalization
+    if "normalize" in transform_config and transform_config["normalize"]:
+        img = img / 255.0
+
+    # bounding box transformation
+    if bboxes is not None and should_resize:
+        bboxes[:, 0] = bboxes[:, 0] / w_orig * w_new
+        bboxes[:, 1] = bboxes[:, 1] / h_orig * h_new
+        bboxes[:, 2] = bboxes[:, 2] / w_orig * w_new
+        bboxes[:, 3] = bboxes[:, 3] / h_orig * h_new
+
+    return image, bboxes
+
+
+
 def load_dataset(configs: dict):
     """
     Load the dataset from the given configurations in file path and return the dataset.
@@ -68,7 +108,7 @@ def load_dataset(configs: dict):
     :return train_images: the training images, list of tensors shaped (c, h, w)
     :return train_labels: the training labels, list of dicts: {"boxes": torch.FloatTensor, "labels": torch.IntTensor}
     :return test_images: the testing images, list of tensors shaped (c, h, w)
-    :return test_labels: the testing labels, list of dicts: {"boxes": torch.FloatTensor, "labels": torch.IntTensor}
+    :return test_labels: the testing labels, list of dicts: {"boxes": torch.FloatTensor, "labels": torch.LongTensor}
     :return label_strings: all the labels in the dataset, order consistent with the labels in the dataset, list of str
     """
 
@@ -77,6 +117,7 @@ def load_dataset(configs: dict):
     train_start, train_end = configs["train_start"], configs["train_end"]
     test_start, test_end = configs["test_start"], configs["test_end"]
     img_format, label_format = configs["img_format"], configs["label_format"]
+
 
     # loading the image and label filenames
     img_list = os.listdir(img_path)
@@ -117,17 +158,20 @@ def load_dataset(configs: dict):
             except RuntimeError as e:
                 print(img_path + img_train)
                 raise RuntimeError(e)
-            # image normalization
-            img = img / 255.0
 
             # reading the label
             bboxes, labels = xml_label_parser(label_path + label_train)
+            bboxes = torch.FloatTensor(bboxes)
             # adding the labels to the set
             label_strings.update(labels)
 
+            # image transformation
+            if configs["image_transform"]["transform"]:
+                img, bboxes = image_transform(configs["image_transform"], img, bboxes)
+
             # adding the image and label to the dataset
             train_images.append(img)
-            train_labels.append({"boxes": torch.FloatTensor(bboxes), "labels": labels})
+            train_labels.append({"boxes": bboxes, "labels": labels})
 
         for img_test, label_test in zip(test_images_filename, test_labels_filename):
             # updating the progress bar
@@ -138,26 +182,29 @@ def load_dataset(configs: dict):
             except RuntimeError as e:
                 print(img_path + img_test)
                 raise RuntimeError(e)
-            # image normalization
-            img = img / 255.0
 
             # reading the label
             bboxes, labels = xml_label_parser(label_path + label_test)
+            bboxes = torch.FloatTensor(bboxes)
             # adding the labels to the set
             label_strings.update(labels)
 
+            # image transformation
+            if configs["image_transform"]["transform"]:
+                img, bboxes = image_transform(configs["image_transform"], img, bboxes)
+
             # adding the image and label to the dataset
             test_images.append(img)
-            test_labels.append({"boxes": torch.FloatTensor(bboxes), "labels": labels})
+            test_labels.append({"boxes": bboxes, "labels": labels})
 
     with Console() as console, console.status("[bold green]Working on creating datasets...") as status:
         # converting str labels to torch.IntTensor labels
         label_strings = list(label_strings)
         for i in range(len(train_labels)):
-            train_labels[i]["labels"] = torch.IntTensor(
+            train_labels[i]["labels"] = torch.LongTensor(
                 [label_strings.index(label) for label in train_labels[i]["labels"]])
         for i in range(len(test_labels)):
-            test_labels[i]["labels"] = torch.IntTensor(
+            test_labels[i]["labels"] = torch.LongTensor(
                 [label_strings.index(label) for label in test_labels[i]["labels"]])
 
         train_dataset = MyImageDataset(train_images, train_labels)

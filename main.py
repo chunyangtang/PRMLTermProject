@@ -8,8 +8,10 @@ from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from rich.console import Console
 from rich.traceback import install
 from rich.progress import Progress
+from rich.progress import track
 
 from dataset_loader import load_dataset
+from MobileNetV2 import MobileNetV2
 
 
 # Rich console initialization
@@ -20,7 +22,7 @@ install()
 device_str = "cpu"
 if torch.cuda.is_available():
     device_str = "cuda"
-    console.log("[bold green]Using CUDA as it's available.[/bold green]")
+    console.log(f"[bold green]Using CUDA as {torch.cuda.get_device_name('cuda')} is available.[/bold green]")
 elif torch.backends.mps.is_available():
     device_str = "mps"
     console.log("[bold green]Using Apple MPS as it's available.[/bold green]")
@@ -61,15 +63,12 @@ if __name__ == "__main__":
     model.train()
     num_epochs = config["model"]["num_epochs"]
 
-    with Progress() as progress:
-        task1 = progress.add_task("Training...", total=num_epochs)
-        for epoch in range(num_epochs):
-            progress.update(task1, advance=1, description=f"[cyan]Epoch {epoch+1}/{num_epochs}")
-            for images, targets in train_loader:
-                images = list(image.to(DEVICE) for image in images)
-                targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
-                output = model(images, targets)
-                console.log(output)
+    for epoch in range(num_epochs):
+        for images, targets in track(train_loader, description=f"[cyan]Epoch {epoch+1}/{num_epochs}[/cyan]"):
+            images = list(image.to(DEVICE) for image in images)
+            targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
+            output = model(images, targets)
+        console.log(output)
 
     # Model parameters saving
     torch.save(model.state_dict(), config["model"]["save_path"])
