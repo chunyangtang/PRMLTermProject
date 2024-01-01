@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     for epoch in range(num_epochs):
         model.train()
-        for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}       [/cyan]"):
+        for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}     [/cyan]"):
             images = list(image.to(DEVICE) for image in images)
             targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
             loss_dict = model(images, targets)
