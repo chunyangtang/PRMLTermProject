@@ -50,8 +50,10 @@ if __name__ == "__main__":
         return tuple(zip(*batch))
     train_loader = DataLoader(train_dataset, batch_size=config["model"]["batch_size"],
                               shuffle=True, collate_fn=collate_fn)
-    test_loader = DataLoader(test_dataset, batch_size=config["model"]["batch_size"]
-                             , shuffle=False, collate_fn=collate_fn)
+    test_loader = DataLoader(test_dataset, batch_size=config["model"]["batch_size"],
+                             shuffle=False, collate_fn=collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=config["model"]["batch_size"],
+                            shuffle=False, collate_fn=collate_fn)
 
     model = fasterrcnn_resnet50_fpn(weights=None, num_classes=len(label_strings)+1,
                                     trainable_backbone_layers=3).to(DEVICE)
@@ -76,7 +78,7 @@ if __name__ == "__main__":
 
     for epoch in range(num_epochs):
         model.train()
-        for images, targets in track(train_loader, description=f"[cyan]Epoch {epoch+1}/{num_epochs}[/cyan]"):
+        for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}       [/cyan]"):
             images = list(image.to(DEVICE) for image in images)
             targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
             loss_dict = model(images, targets)
@@ -91,13 +93,16 @@ if __name__ == "__main__":
         all_predictions = []
         all_targets = []
         with torch.no_grad():
-            for images, targets in track(test_loader, description=f"[cyan]Model Testing...[/cyan]"):
+            for images, targets in track(val_loader, description=f"[cyan]Model Evaluating...[/cyan]"):
                 images = list(image.to(DEVICE) for image in images)
                 outputs = model(images)
 
                 all_predictions.extend(outputs)
                 all_targets.extend(targets)
-        valid_accuracy = calculate_accuracy(all_predictions, all_targets)
+
+        # Calculate the validation accuracy
+        with console.status("[bold green]Calculating Validation Accuracy...[/bold green]"):
+            valid_accuracy = calculate_accuracy(all_predictions, all_targets)
 
         console.log(f"[bold green]Epoch {epoch+1}/{num_epochs}, Training Loss: {losses.item()}, "
                     f"Validation Accuracy: {valid_accuracy}[/bold green]")
@@ -130,13 +135,7 @@ if __name__ == "__main__":
             all_targets.extend(targets)
 
     # Calculate the accuracy
-    accuracy = calculate_accuracy(all_predictions, all_targets)
+    with console.status("[bold green]Calculating Validation Accuracy...[/bold green]"):
+        accuracy = calculate_accuracy(all_predictions, all_targets)
     console.log(f"[bold green]Accuracy: {accuracy}[/bold green]")
-
-
-
-
-
-
-
 
