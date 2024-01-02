@@ -7,6 +7,5 @@ from torchvision.models.detection import FasterRCNN
 
 
 def get_model(configs, num_classes):
-    model = fasterrcnn_resnet50_fpn(weights='DEFAULT', num_classes=num_classes+1,
-                                    trainable_backbone_layers=3)
+    model = fasterrcnn_resnet50_fpn(weights='DEFAULT', trainable_backbone_layers=3)
     return model

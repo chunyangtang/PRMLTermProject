@@ -58,8 +58,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=config["model"]["batch_size"],
                             shuffle=False, collate_fn=collate_fn)
 
-    model = fasterrcnn_resnet50_fpn(weights='DEFAULT', num_classes=len(label_strings)+1,
-                                    trainable_backbone_layers=3).to(DEVICE)
+    model = fasterrcnn_resnet50_fpn(weights='DEFAULT', trainable_backbone_layers=3).to(DEVICE)
     # console.log("[bold green]Model Overview[/bold green]")
     # console.log(model)
 

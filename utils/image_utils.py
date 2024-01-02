@@ -126,7 +126,7 @@ if __name__ == "__main__":
     label_strings = ['bicycle', 'cat', 'tvmonitor', 'pottedplant', 'car', 'bird', 'sheep', 'sofa',
                      'chair', 'dog', 'boat', 'train', 'aeroplane', 'diningtable', 'bottle', 'horse',
                      'cow', 'motorbike', 'bus', 'person']
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None, num_classes=len(label_strings)+1,
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None, num_classes=91,
                                                                  trainable_backbone_layers=3)
     model.load_state_dict(torch.load('../model_weights/fasterrcnn_resnet50_fpn.pth',
                                      map_location=torch.device('cpu')))
