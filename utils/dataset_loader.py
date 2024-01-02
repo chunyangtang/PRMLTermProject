@@ -3,9 +3,10 @@ import xml.etree.ElementTree as ET
 import torch
 from torch.utils.data import Dataset, random_split
 from torchvision.io import read_image
-import torchvision.transforms as transforms
 from rich.console import Console
 from rich.progress import Progress
+
+from utils.image_utils import image_transform
 
 
 class MyImageDataset(Dataset):
@@ -60,44 +61,6 @@ def xml_label_parser(xml_path: str) -> (list, list):
     labels = [obj.find("name").text for obj in objects]
 
     return bboxes, labels
-
-
-def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.Tensor=None) -> (torch.Tensor, torch.Tensor):
-    """
-    Transform the image and bounding boxes according to the given configurations.
-    :param transform_config: the configurations of the image transformation
-    :param image: the image to be transformed
-    :param bboxes: the bounding boxes of the objects in the image
-    :return image: the transformed image
-    :return bboxes: the transformed bounding boxes
-    """
-
-    h_orig, w_orig = image.shape[1], image.shape[2]
-
-    transform_components = []
-
-    should_resize = "resize" in transform_config
-    if should_resize:
-        h_new, w_new = transform_config["resize"]
-        transform_components.append(transforms.Resize((h_new, w_new)))
-
-    # image transformation
-    transform = transforms.Compose(transform_components)
-    image = transform(image)
-
-    # image normalization
-    if "normalize" in transform_config and transform_config["normalize"]:
-        image = image / 255.0
-
-    # bounding box transformation
-    if should_resize and bboxes is not None:
-        bboxes[:, 0] = bboxes[:, 0] / w_orig * w_new
-        bboxes[:, 1] = bboxes[:, 1] / h_orig * h_new
-        bboxes[:, 2] = bboxes[:, 2] / w_orig * w_new
-        bboxes[:, 3] = bboxes[:, 3] / h_orig * h_new
-
-    return image, bboxes
-
 
 def load_dataset(configs: dict):
     """
@@ -193,6 +156,9 @@ def load_dataset(configs: dict):
             # adding the image and label to the dataset
             test_images.append(img)
             test_labels.append({"boxes": bboxes, "labels": labels})
+
+    with Console() as console:
+        console.log(f"[bold green]All labels are: \n{label_strings}[/bold green]")
 
     with Console() as console, console.status("[bold green]Working on creating datasets...") as status:
         # converting str labels to torch.IntTensor labels

@@ -1,4 +1,6 @@
 import json
+import os
+from datetime import datetime
 import torch
 from torch.utils.data import DataLoader
 
@@ -7,10 +9,9 @@ from torchvision.models.detection import fasterrcnn_resnet50_fpn
 
 from rich.console import Console
 from rich.traceback import install
-from rich.progress import Progress
 from rich.progress import track
 
-from dataset_loader import load_dataset
+from utils.dataset_loader import load_dataset
 from utils.accuracy_evaluator import calculate_accuracy
 
 
@@ -18,6 +19,8 @@ from utils.accuracy_evaluator import calculate_accuracy
 console = Console()
 # Rich traceback initialization
 install()
+
+log_str = ""
 
 device_str = "cpu"
 if torch.cuda.is_available():
@@ -55,7 +58,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=config["model"]["batch_size"],
                             shuffle=False, collate_fn=collate_fn)
 
-    model = fasterrcnn_resnet50_fpn(weights=None, num_classes=len(label_strings)+1,
+    model = fasterrcnn_resnet50_fpn(weights='DEFAULT', num_classes=len(label_strings)+1,
                                     trainable_backbone_layers=3).to(DEVICE)
     # console.log("[bold green]Model Overview[/bold green]")
     # console.log(model)
@@ -106,19 +109,25 @@ if __name__ == "__main__":
 
         console.log(f"[bold green]Epoch {epoch+1}/{num_epochs}, Training Loss: {losses.item()}, "
                     f"Validation Accuracy: {valid_accuracy}[/bold green]")
+        log_str += f"Epoch {epoch+1}/{num_epochs}, Training Loss: {losses.item()}, " \
+                   f"Validation Accuracy: {valid_accuracy}\n"
 
         scheduler.step(valid_accuracy)
 
         if valid_accuracy > best_val_accuracy:
             best_val_accuracy = valid_accuracy
             no_improve_epochs = 0
-            torch.save(model.state_dict(), config["model"]["save_path"])
+            torch.save(model.state_dict(), "model_weights/" + config["model"]["save_path"])
         else:
             no_improve_epochs += 1
 
         if no_improve_epochs >= es_epochs:
             console.log(f"[bold red]Early stopping at epoch {epoch+1}[/bold red]")
+            log_str += f"Early stopping at epoch {epoch+1}\n"
             break
+
+    console.log(f"[bold green]Training finished. Best Validation Accuracy: {best_val_accuracy}[/bold green]")
+    log_str += f"Training finished. Best Validation Accuracy: {best_val_accuracy}\n"
 
     # Testing
     model.eval()
@@ -135,7 +144,32 @@ if __name__ == "__main__":
             all_targets.extend(targets)
 
     # Calculate the accuracy
-    with console.status("[bold green]Calculating Validation Accuracy...[/bold green]"):
+    with console.status("[bold green]Calculating Test Accuracy...[/bold green]"):
         accuracy = calculate_accuracy(all_predictions, all_targets)
-    console.log(f"[bold green]Accuracy: {accuracy}[/bold green]")
+    console.log(f"[bold green]Test Accuracy: {accuracy}[/bold green]")
+    log_str += f"Test Accuracy: {accuracy}\n"
+
+    # Logging the results
+    # Create the results directory
+    if not os.path.exists("logs"):
+        os.mkdir("logs")
+    log_dir = os.path.join("logs", datetime.now().strftime("{}_%y%m%d-%H%M%S-%f"
+                                                           .format(config["logger"]["log_folder"])))
+    os.mkdir(log_dir)
+
+    # Save the config file
+    with open(os.path.join(log_dir, "config.json"), "w") as f:
+        json.dump(config, f, indent=4)
+
+    # Backup the main.py file
+    os.system("cp main.py {}".format(os.path.join(log_dir, "main.py.bak")))
+
+    # Save the model
+    os.system("cp model_weights/{} {}".format(config["model"]["save_path"], log_dir))
+
+    # Save the results
+    with open(os.path.join(log_dir, "results.txt"), "w") as f:
+        f.write(log_str)
+
+
 

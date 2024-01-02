@@ -6,8 +6,13 @@
     "early_stop": 10,
     "lr_patience": 3,
     "lr_factor": 0.1,
-    "save_path": "./model_weights/fasterrcnn_resnet50_fpn.pth",
+    "save_path": "fasterrcnn_resnet50_fpn_weights.pth",
     "comment": "The configurations for model training and testing."
+  },
+  "logger": {
+    "log_folder": "fasterrcnn",
+    "log_file": "fasterrcnn.log",
+    "comment": "The configurations for logger."
   },
   "data": {
     "img_path": "./dataset/JPEGImages/",
