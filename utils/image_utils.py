@@ -69,6 +69,11 @@ def image_inference(model: torch.nn.Module, image: torch.Tensor, transform_confi
     # get the predicted bounding boxes and labels
     bboxes = pred[0]["boxes"]
     labels = pred[0]["labels"]
+    scores = pred[0]["scores"]
+    # filter out the predictions with score less than 0.8
+    mask = scores > 0.8
+    bboxes = bboxes[mask]
+    labels = labels[mask]
 
     return bboxes, labels
 
@@ -115,20 +120,20 @@ if __name__ == "__main__":
     print(os.getcwd())
     # Test bbox_visualizer
     import torchvision
-    image = torchvision.io.read_image("../dataset/JPEGImages/2010_005654.jpg")
+    image = torchvision.io.read_image("../dataset/JPEGImages/2008_007666.jpg")  # 2010_005654.jpg")
     from utils.dataset_loader import xml_label_parser
-    bboxes, label_strings = xml_label_parser("../dataset/Annotations/2010_005654.xml")
+    bboxes, label_strings = xml_label_parser("../dataset/Annotations/2008_007666.xml")
     labels = [label_strings.index(label) for label in label_strings]
     targets = {"boxes": torch.FloatTensor(bboxes), "labels": torch.LongTensor(labels)}
     bbox_visualizer(image, targets, label_strings)
 
     # Test inference
-    label_strings = ['bicycle', 'cat', 'tvmonitor', 'pottedplant', 'car', 'bird', 'sheep', 'sofa',
-                     'chair', 'dog', 'boat', 'train', 'aeroplane', 'diningtable', 'bottle', 'horse',
-                     'cow', 'motorbike', 'bus', 'person']
+    label_strings = ['background', 'bicycle', 'cat', 'tvmonitor', 'pottedplant', 'car', 'bird', 'sheep', 'sofa',
+                     'chair', 'dog', 'boat', 'train', 'aeroplane', 'diningtable', 'bottle', 'horse', 'cow',
+                     'motorbike', 'bus', 'person']
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None, num_classes=91,
                                                                  trainable_backbone_layers=3)
-    model.load_state_dict(torch.load('../model_weights/fasterrcnn_resnet50_fpn.pth',
+    model.load_state_dict(torch.load('../model_weights/fasterrcnn_resnet50_fpn_weights.pth',
                                      map_location=torch.device('cpu')))
 
     bboxes, labels = image_inference(model, image, {"normalize": True})

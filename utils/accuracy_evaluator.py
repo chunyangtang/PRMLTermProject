@@ -5,6 +5,9 @@ import numpy as np
 def calculate_iou(pred_box, gt_box):
     """
     Calculate the Intersection over Union (IoU) between two bounding boxes.
+    :param pred_box: the predicted bounding box, list of 4 numbers [x_min, y_min, x_max, y_max]
+    :param gt_box: the ground truth bounding box, list of 4 numbers [x_min, y_min, x_max, y_max]
+    :return: the IoU score between the two boxes, scalar
     """
     # determine the (x, y)-coordinates of the intersection rectangle
     xA = max(pred_box[0], gt_box[0])
@@ -21,7 +24,7 @@ def calculate_iou(pred_box, gt_box):
 
     # compute the intersection over union by taking the intersection
     # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
+    # areas - the intersection area
     iou = interArea / float(boxAArea + boxBArea - interArea)
 
     # return the intersection over union value
@@ -61,9 +64,9 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5):
     for preds, targets in zip(all_predictions, all_targets):
         # process each class
         for class_id in range(len(preds["labels"])):
-            pred_boxes = preds["boxes"][preds["labels"] == class_id]
-            pred_scores = preds["scores"][preds["labels"] == class_id]
-            gt_boxes = targets["boxes"][targets["labels"] == class_id]
+            pred_boxes = preds["boxes"][preds["labels"] == class_id]  # predicted boxes of a class
+            pred_scores = preds["scores"][preds["labels"] == class_id]  # scores of the predicted boxes
+            gt_boxes = targets["boxes"][targets["labels"] == class_id]  # ground truth boxes of a class
 
             # if no prediction or ground truth, skip
             if len(pred_boxes) == 0 or len(gt_boxes) == 0:

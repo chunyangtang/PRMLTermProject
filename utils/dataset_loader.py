@@ -163,6 +163,7 @@ def load_dataset(configs: dict):
     with Console() as console, console.status("[bold green]Working on creating datasets...") as status:
         # converting str labels to torch.IntTensor labels
         label_strings = list(label_strings)
+        label_strings = ["background"] + label_strings  # adding background label
         for i in range(len(train_labels)):
             train_labels[i]["labels"] = torch.LongTensor(
                 [label_strings.index(label) for label in train_labels[i]["labels"]])

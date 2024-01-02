@@ -113,11 +113,14 @@ if __name__ == "__main__":
 
         scheduler.step(valid_accuracy)
 
-        if valid_accuracy > best_val_accuracy:
+        if valid_accuracy > best_val_accuracy:  # Update the best validation accuracy
             best_val_accuracy = valid_accuracy
             no_improve_epochs = 0
+            # Save the model
+            if not os.path.exists("model_weights"):
+                os.mkdir("model_weights")
             torch.save(model.state_dict(), "model_weights/" + config["model"]["save_path"])
-        else:
+        else:  # No improvement
             no_improve_epochs += 1
 
         if no_improve_epochs >= es_epochs:
