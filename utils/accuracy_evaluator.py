@@ -79,6 +79,8 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
 
     # iterate through each image
     for preds, targets in zip(all_predictions, all_targets):
+        if len(preds["boxes"]) == 0:
+            continue
         # process each class
         for class_id in range(1, max(preds["labels"])+1):
             pred_scores = preds["scores"][preds["labels"] == class_id]  # scores of the predicted boxes
