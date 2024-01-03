@@ -1,6 +1,5 @@
 from collections import defaultdict
 import numpy as np
-import torch
 
 
 def calculate_iou(pred_box, gt_box):
@@ -99,9 +98,7 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
             tp = np.zeros(len(pred_boxes))
             fp = np.zeros(len(pred_boxes))
             for i, pred_box in enumerate(pred_boxes):  # iterate through each predicted box
-                ious = [calculate_iou(pred_box, gt_box) for gt_box in gt_boxes]
-                if torch.is_tensor(ious):
-                    ious = ious.cpu().numpy()
+                ious = [calculate_iou(pred_box, gt_box).cpu() for gt_box in gt_boxes]
                 best_match = np.argmax(ious) if ious else None
                 max_iou = ious[best_match] if ious else 0  # highest IoU, i.e. best match
 
