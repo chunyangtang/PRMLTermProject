@@ -3,7 +3,7 @@
     "num_epochs": 100,
     "batch_size": 8,
     "lr": 0.001,
-    "early_stop": 10,
+    "early_stop": 30,
     "lr_patience": 3,
     "lr_factor": 0.1,
     "save_path": "fasterrcnn_resnet50_fpn_weights.pth",

@@ -62,7 +62,7 @@ def calculate_ap(precision, recall):
     return ap
 
 
-def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_threshold=0.5):
+def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_threshold=0.0):
     """
     Calculate the mean Average Precision (mAP) for given predictions and ground truths.
     :param all_predictions: the predictions of the model, list of dicts like
@@ -79,7 +79,7 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
     # iterate through each image
     for preds, targets in zip(all_predictions, all_targets):
         # process each class
-        for class_id in range(len(preds["labels"])):
+        for class_id in range(1, max(preds["labels"])+1):
             pred_scores = preds["scores"][preds["labels"] == class_id]  # scores of the predicted boxes
             # filter out the predictions in score order and score greater than the threshold
             pred_scores, sort_ind = pred_scores.sort(descending=True)
