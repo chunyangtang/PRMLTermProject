@@ -34,6 +34,9 @@ def calculate_iou(pred_box, gt_box):
 def calculate_ap(precision, recall):
     """
     Calculate the Average Precision (AP) given precision and recall values.
+    :param precision: the precision values, np array of shape (num_pred_boxes, )
+    :param recall: the recall values, np array of shape (num_pred_boxes, )
+    :return: the AP score, scalar
     """
     # method of calculation follows PASCAL VOC 2012
     # adding two more points, representing minimum recall and maximum recall
@@ -50,12 +53,22 @@ def calculate_ap(precision, recall):
 
     # sum up the different areas to calculate AP
     ap = np.sum((recall[changing_points + 1] - recall[changing_points]) * precision[changing_points + 1])
+
+    assert ap <= 1, "AP cannot be greater than 1."
+
     return ap
 
 
-def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5):
+def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_threshold=0.5):
     """
     Calculate the mean Average Precision (mAP) for given predictions and ground truths.
+    :param all_predictions: the predictions of the model, list of dicts like
+                            [{"boxes": torch.FloatTensor, "labels": torch.IntTensor, "scores": torch.FloatTensor}]
+    :param all_targets: the ground truth of the model, list of dicts like
+                        [{"boxes": torch.FloatTensor, "labels": torch.IntTensor}]
+    :param iou_threshold: the threshold of IoU, scalar
+    :param score_threshold: the threshold of score, scalar
+    :return: the mAP score, scalar
     """
     # store AP values for each class
     ap_per_class = defaultdict(list)
@@ -64,9 +77,14 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5):
     for preds, targets in zip(all_predictions, all_targets):
         # process each class
         for class_id in range(len(preds["labels"])):
-            pred_boxes = preds["boxes"][preds["labels"] == class_id]  # predicted boxes of a class
             pred_scores = preds["scores"][preds["labels"] == class_id]  # scores of the predicted boxes
-            gt_boxes = targets["boxes"][targets["labels"] == class_id]  # ground truth boxes of a class
+            # filter out the predictions in score order and score greater than the threshold
+            pred_scores, sort_ind = pred_scores.sort(descending=True)
+
+            pred_boxes = preds["boxes"][preds["labels"] == class_id][sort_ind]
+            pred_boxes = pred_boxes[pred_scores >= score_threshold]  # predicted boxes
+
+            gt_boxes = targets["boxes"][targets["labels"] == class_id]  # ground truth boxes
 
             # if no prediction or ground truth, skip
             if len(pred_boxes) == 0 or len(gt_boxes) == 0:
@@ -75,9 +93,9 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5):
             # calculate IoU and metrics for each predicted box
             tp = np.zeros(len(pred_boxes))
             fp = np.zeros(len(pred_boxes))
-            for i, pred_box in enumerate(pred_boxes):
+            for i, pred_box in enumerate(pred_boxes):  # iterate through each predicted box
                 ious = [calculate_iou(pred_box, gt_box) for gt_box in gt_boxes]
-                max_iou = max(ious) if ious else 0
+                max_iou = max(ious) if ious else 0  # highest IoU, i.e. best match
 
                 # if the highest IoU is above the threshold, count as true positive, else false positive
                 if max_iou >= iou_threshold:
@@ -86,9 +104,10 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5):
                     fp[i] = 1
 
             # accumulate and compute precision and recall
-            acc_fp = np.cumsum(fp)
-            acc_tp = np.cumsum(tp)
+            acc_fp = np.cumsum(fp)  # accumulated false positive (e.g.[0, 1, 1, 2, 2, 2, 3, 3, 4, 5, ...])
+            acc_tp = np.cumsum(tp)  # accumulated true positive
             recall = acc_tp / len(gt_boxes)
+            assert (recall <= 1).all(), "Recall cannot be greater than 1."
             precision = np.divide(acc_tp, (acc_fp + acc_tp))
 
             # calculate and store AP

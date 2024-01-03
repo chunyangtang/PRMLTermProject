@@ -70,8 +70,8 @@ def image_inference(model: torch.nn.Module, image: torch.Tensor, transform_confi
     bboxes = pred[0]["boxes"]
     labels = pred[0]["labels"]
     scores = pred[0]["scores"]
-    # filter out the predictions with score less than 0.8
-    mask = scores > 0.8
+    # filter out the predictions with score less than 0.5
+    mask = scores > 0.5
     bboxes = bboxes[mask]
     labels = labels[mask]
 
