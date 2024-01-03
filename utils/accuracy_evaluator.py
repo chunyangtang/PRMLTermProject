@@ -52,7 +52,10 @@ def calculate_ap(precision, recall):
     changing_points = np.where(recall[:-1] != recall[1:])[0]
 
     # sum up the different areas to calculate AP
-    ap = np.sum((recall[changing_points + 1] - recall[changing_points]) * precision[changing_points + 1])
+    if len(changing_points) == 0:
+        ap = 0
+    else:
+        ap = np.sum((recall[changing_points + 1] - recall[changing_points]) * precision[changing_points + 1])
 
     assert ap <= 1, "AP cannot be greater than 1."
 
@@ -96,14 +99,13 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
             fp = np.zeros(len(pred_boxes))
             for i, pred_box in enumerate(pred_boxes):  # iterate through each predicted box
                 ious = [calculate_iou(pred_box, gt_box) for gt_box in gt_boxes]
-                max_iou = max(ious) if ious else 0  # highest IoU, i.e. best match
+                best_match = np.argmax(ious) if ious else None
+                max_iou = ious[best_match] if ious else 0  # highest IoU, i.e. best match
 
                 # if the highest IoU is above the threshold, count as true positive, else false positive
-                if max_iou >= iou_threshold and gt_boxes_matched[np.argmax(ious)] == 0:
+                if max_iou >= iou_threshold and gt_boxes_matched[best_match] == 0:
                     tp[i] = 1
-                    # find the best match and mark as matched
-                    best_match = np.argmax(ious)
-                    gt_boxes_matched[best_match] = 1
+                    gt_boxes_matched[best_match] = 1  # mark as matched
                 else:
                     fp[i] = 1
 
