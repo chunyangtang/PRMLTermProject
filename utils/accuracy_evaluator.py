@@ -85,6 +85,7 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
             pred_boxes = pred_boxes[pred_scores >= score_threshold]  # predicted boxes
 
             gt_boxes = targets["boxes"][targets["labels"] == class_id]  # ground truth boxes
+            gt_boxes_matched = np.zeros(len(gt_boxes))  # whether the ground truth box is matched
 
             # if no prediction or ground truth, skip
             if len(pred_boxes) == 0 or len(gt_boxes) == 0:
@@ -98,8 +99,11 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
                 max_iou = max(ious) if ious else 0  # highest IoU, i.e. best match
 
                 # if the highest IoU is above the threshold, count as true positive, else false positive
-                if max_iou >= iou_threshold:
+                if max_iou >= iou_threshold and gt_boxes_matched[np.argmax(ious)] == 0:
                     tp[i] = 1
+                    # find the best match and mark as matched
+                    best_match = np.argmax(ious)
+                    gt_boxes_matched[best_match] = 1
                 else:
                     fp[i] = 1
 

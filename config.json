@@ -11,7 +11,6 @@
   },
   "logger": {
     "log_folder": "fasterrcnn",
-    "log_file": "fasterrcnn.log",
     "comment": "The configurations for logger."
   },
   "data": {
