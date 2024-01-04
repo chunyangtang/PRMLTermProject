@@ -127,7 +127,7 @@ def load_dataset(configs: dict):
 
             # image transformation
             if configs["image_transform"]["transform"]:
-                img, bboxes = image_transform(configs["image_transform"], img, bboxes)
+                img, bboxes, labels = image_transform(configs["image_transform"], img, bboxes, labels)
 
             # Creating image id
             img_id = int(os.path.splitext(img_train)[0])
@@ -155,7 +155,7 @@ def load_dataset(configs: dict):
 
             # image transformation
             if configs["image_transform"]["transform"]:
-                img, bboxes = image_transform(configs["image_transform"], img, bboxes)
+                img, bboxes, labels = image_transform(configs["image_transform"], img, bboxes, labels)
 
             # adding the image and label to the dataset
             test_images.append(img)

@@ -94,9 +94,10 @@ if __name__ == "__main__":
                 image_augmented, target_augmented = [], []
                 train_dataset_copy = copy.deepcopy(train_dataset)
                 for image, target in train_dataset_copy:
-                    image, boxes = image_transform({"augment": True}, image, bboxes=target["boxes"])
+                    image, boxes, labels = image_transform({"augment": True}, image,
+                                                           bboxes=target["boxes"], labels=target["labels"])
                     image_augmented.append(image)
-                    target_augmented.append({"boxes": boxes, "labels": target["labels"]})
+                    target_augmented.append({"boxes": boxes, "labels": labels})
 
                 # Concatenate the augmented dataset with the original dataset
                 train_dataset_augmented = MyImageDataset(image_augmented, target_augmented)

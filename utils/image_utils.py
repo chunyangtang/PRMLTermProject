@@ -8,15 +8,17 @@ import matplotlib.patches as patches
 import albumentations as A
 
 
-def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.Tensor = None) -> (torch.Tensor,
-                                                                                                  torch.Tensor):
+def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.Tensor = None,
+                    labels: torch.Tensor = None) -> (torch.Tensor, torch.Tensor):
     """
     Transform the image and bounding boxes according to the given configurations.
     :param transform_config: the configurations of the image transformation
     :param image: the image to be transformed
     :param bboxes: the bounding boxes of the objects in the image, can be None for model inference
+    :param labels: the labels of the objects in the image, can be None for model inference
     :return image: the transformed image
     :return bboxes: the transformed bounding boxes
+    :return labels: the transformed labels (nearly the same as the original labels, could be less)
     """
 
     h_orig, w_orig = image.shape[1], image.shape[2]
@@ -51,11 +53,19 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
             A.RandomResizedCrop(h_new, w_new, scale=(0.5, 1.0), ratio=(0.75, 1.3333333333333333), p=0.5),
         ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
         transformed = transform(image=image.permute(1, 2, 0).numpy(), bboxes=bboxes.numpy(),
-                                labels=np.ones(len(bboxes)))  # Fake labels
+                                labels=labels.numpy())  # Fake labels
         image = torch.FloatTensor(transformed["image"]).permute(2, 0, 1)
-        bboxes = torch.FloatTensor(transformed["bboxes"])
 
-    return image, bboxes
+        bboxes, labels = [], []
+        for bbox, label in zip(transformed["bboxes"], transformed["labels"]):
+            if not bbox.empty:
+                bboxes.append(bbox)
+                labels.append(label)
+
+        bboxes = torch.FloatTensor(bboxes)
+        labels = torch.LongTensor(labels)
+
+    return image, bboxes, labels
 
 
 def image_inference(model: torch.nn.Module, image: torch.Tensor, transform_config: dict = None) -> (torch.Tensor,
@@ -71,7 +81,7 @@ def image_inference(model: torch.nn.Module, image: torch.Tensor, transform_confi
 
     # transform the image
     if transform_config is not None:
-        image, _ = image_transform(transform_config, image)
+        image, _, _ = image_transform(transform_config, image)
 
     # perform inference
     model.eval()
