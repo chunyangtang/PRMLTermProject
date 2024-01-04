@@ -83,6 +83,7 @@ if __name__ == "__main__":
         model.train()
         for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}     [/cyan]"):
             images = list(image.to(DEVICE) for image in images)
+            image_ids = [target.pop("image_id") for target in targets]
             targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
             loss_dict = model(images, targets)
             losses = sum(loss for loss in loss_dict.values())
