@@ -50,7 +50,7 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
             A.ShiftScaleRotate(p=0.5),
             A.RandomResizedCrop(h_new, w_new, scale=(0.5, 1.0), ratio=(0.75, 1.3333333333333333), p=0.5),
         ], bbox_params=A.BboxParams(format='pascal_voc'))
-        transformed = transform(image=image.permute(1, 2, 0).numpy(), bboxes=bboxes.numpy(), labels=np.ones(len(bboxes)))
+        transformed = transform(image=image.permute(1, 2, 0).numpy(), bboxes=bboxes.numpy())
         image = torch.FloatTensor(transformed["image"]).permute(2, 0, 1)
         bboxes = torch.FloatTensor(transformed["bboxes"])
 
