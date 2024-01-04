@@ -114,8 +114,8 @@ if __name__ == "__main__":
                     continue
                 images.append(image)
                 targets.append(target)
-            if len(images) == 0:
-                continue
+            # if len(images) == 0:
+            #     continue
             loss_dict = model(images, targets)
             losses = sum(loss for loss in loss_dict.values())
 
