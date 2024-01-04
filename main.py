@@ -2,6 +2,8 @@ import json
 import os
 import shutil
 from datetime import datetime
+import copy
+
 import torch
 from torch.utils.data import DataLoader, ConcatDataset
 
@@ -87,18 +89,20 @@ if __name__ == "__main__":
 
         # Creating augmented dataset
         if config["data"]["augmentation"]["augment"]:
-            # Augment the training dataset
-            image_augmented, target_augmented = [], []
-            for image, target in train_dataset:
-                image, boxes = image_transform({"augment": True}, image, bboxes=target["boxes"])
-                image_augmented.append(image)
-                target_augmented.append({"boxes": boxes, "labels": target["labels"]})
+            with logger.console.status("[bold green]Augmenting the training dataset...[/bold green]"):
+                # Augment the training dataset
+                image_augmented, target_augmented = [], []
+                train_dataset_copy = copy.deepcopy(train_dataset)
+                for image, target in train_dataset_copy:
+                    image, boxes = image_transform({"augment": True}, image, bboxes=target["boxes"])
+                    image_augmented.append(image)
+                    target_augmented.append({"boxes": boxes, "labels": target["labels"]})
 
-            # Concatenate the augmented dataset with the original dataset
-            train_dataset_augmented = MyImageDataset(image_augmented, target_augmented)
-            train_dataset_concat = ConcatDataset([train_dataset, train_dataset_augmented])
-            train_loader = DataLoader(train_dataset_concat, batch_size=config["model"]["batch_size"],
-                                      shuffle=True, collate_fn=collate_fn)
+                # Concatenate the augmented dataset with the original dataset
+                train_dataset_augmented = MyImageDataset(image_augmented, target_augmented)
+                train_dataset_concat = ConcatDataset([train_dataset, train_dataset_augmented])
+                train_loader = DataLoader(train_dataset_concat, batch_size=config["model"]["batch_size"],
+                                          shuffle=True, collate_fn=collate_fn)
 
         for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}     [/cyan]"):
             images = list(image.to(DEVICE) for image in images)
