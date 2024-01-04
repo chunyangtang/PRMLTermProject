@@ -1,11 +1,13 @@
 {
   "model": {
-    "num_epochs": 100,
+    "num_epochs": 300,
     "batch_size": 8,
     "lr": 0.001,
-    "early_stop": 30,
-    "lr_patience": 3,
-    "lr_factor": 0.1,
+    "SGD_momentum": 0.9,
+    "SGD_weight_decay": 0.0005,
+    "early_stop": 100,
+    "lr_patience": 10,
+    "lr_factor": 0.5,
     "save_path": "fasterrcnn_resnet50_fpn_weights.pth",
     "comment": "The configurations for model training and testing."
   },

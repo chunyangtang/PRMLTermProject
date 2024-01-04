@@ -30,7 +30,6 @@ python main.py
 ```
 
 Notice that:
-- There's `os.system('cp ...')` commands in `main.py` so it might need some modification to run on non-Unix-like systems.
 - The program will automatically download the pretrained models from the Internet if using `fasterrcnn_resnet50_fpn`.
 - The program will automatically create `model_weights` and `logs` folder for logging.
 

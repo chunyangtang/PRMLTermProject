@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from datetime import datetime
 import torch
 from torch.utils.data import DataLoader
@@ -7,30 +8,29 @@ from torch.utils.data import DataLoader
 # https://pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 
-from rich.console import Console
 from rich.traceback import install
 from rich.progress import track
 
 from utils.dataset_loader import load_dataset
 from utils.accuracy_evaluator import calculate_accuracy
+from utils.image_utils import bbox_visualizer
+from utils.logging_utils import MyLogger
 
 
-# Rich console initialization
-console = Console()
 # Rich traceback initialization
 install()
 
-log_str = ""
+logger = MyLogger()
 
 device_str = "cpu"
 if torch.cuda.is_available():
     device_str = "cuda"
-    console.log(f"[bold green]Using CUDA as {torch.cuda.get_device_name('cuda')} is available.[/bold green]")
+    logger.console_log(f"[bold green]Using CUDA as {torch.cuda.get_device_name('cuda')} is available.[/bold green]")
 elif torch.backends.mps.is_available():
     device_str = "mps"
-    console.log("[bold green]Using Apple MPS as it's available.[/bold green]")
+    logger.console_log("[bold green]Using Apple MPS as it's available.[/bold green]")
 else:
-    console.log("[bold red]CUDA is not available, using CPU.[/bold red]")
+    logger.console_log("[bold red]CUDA is not available, using CPU.[/bold red]")
 
 DEVICE = torch.device(device_str)
 
@@ -42,8 +42,8 @@ if __name__ == "__main__":
         config = json.load(f)
 
     # Print the config file
-    console.log("[bold green]Configurations Overview[/bold green]")
-    console.log(config)
+    logger.console.log("[bold green]Configurations Overview[/bold green]")
+    logger.console.log(config)
 
     # Loading the dataset
     train_dataset, val_dataset, test_dataset, label_strings = load_dataset(config["data"])
@@ -59,17 +59,18 @@ if __name__ == "__main__":
                             shuffle=False, collate_fn=collate_fn)
 
     model = fasterrcnn_resnet50_fpn(weights='DEFAULT', trainable_backbone_layers=3).to(DEVICE)
-    # console.log("[bold green]Model Overview[/bold green]")
-    # console.log(model)
+    # logger.console.log("[bold green]Model Overview[/bold green]")
+    # logger.console.log(model)
 
     # Define the optimizer
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.Adam(params, lr=config["model"]["lr"])
+    optimizer = torch.optim.SGD(params, lr=config["model"]["lr"], momentum=config["model"]["SGD_momentum"],
+                                weight_decay=config["model"]["SGD_weight_decay"])
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=config["model"]["lr_factor"],
                                                            patience=config["model"]["lr_patience"], verbose=True)
 
     # Training
-    console.log("[bold cyan]Begin training...[/bold cyan]")
+    logger.console.log("[bold cyan]Begin training...[/bold cyan]")
 
     num_epochs = config["model"]["num_epochs"]
 
@@ -103,13 +104,14 @@ if __name__ == "__main__":
                 all_targets.extend(targets)
 
         # Calculate the validation accuracy
-        with console.status("[bold green]Calculating Validation Accuracy...[/bold green]"):
+        with logger.console.status("[bold green]Calculating Validation Accuracy...[/bold green]"):
             valid_accuracy = calculate_accuracy(all_predictions, all_targets)
 
-        console.log(f"[bold green]Epoch {epoch+1}/{num_epochs}, Training Loss: {losses.item()}, "
-                    f"Validation Accuracy: {valid_accuracy}[/bold green]")
-        log_str += f"Epoch {epoch+1}/{num_epochs}, Training Loss: {losses.item()}, " \
-                   f"Validation Accuracy: {valid_accuracy}\n"
+        # Logging the results
+        logger.log_epoch(losses.item(), valid_accuracy)
+
+        logger.console_log(f"[bold green]Epoch {epoch+1}/{num_epochs}, Training Loss: {losses.item()}, "
+                           f"Validation Accuracy: {valid_accuracy}[/bold green]")
 
         scheduler.step(valid_accuracy)
 
@@ -119,23 +121,28 @@ if __name__ == "__main__":
             # Save the model
             if not os.path.exists("model_weights"):
                 os.mkdir("model_weights")
-            torch.save(model.state_dict(), "model_weights/" + config["model"]["save_path"])
+            torch.save(model.state_dict(), "model_weights/" + "{}_best{}".format(*os.path.splitext(config["model"]
+                                                                                                   ["save_path"])))
         else:  # No improvement
             no_improve_epochs += 1
 
         if no_improve_epochs >= es_epochs:
-            console.log(f"[bold red]Early stopping at epoch {epoch+1}[/bold red]")
-            log_str += f"Early stopping at epoch {epoch+1}\n"
+            logger.console_log(f"[bold red]Early stopping at epoch {epoch+1}[/bold red]")
             break
 
-    console.log(f"[bold green]Training finished. Best Validation Accuracy: {best_val_accuracy}[/bold green]")
-    log_str += f"Training finished. Best Validation Accuracy: {best_val_accuracy}\n"
+    logger.console_log(f"[bold green]Training finished. Best Validation Accuracy: {best_val_accuracy}[/bold green]")
+    torch.save(model.state_dict(), "model_weights/" + "{}_last{}".format(*os.path.splitext(config["model"]
+                                                                                           ["save_path"])))
 
     # Testing
     model.eval()
 
     all_predictions = []
     all_targets = []
+
+    # Save the annotated images
+    if not os.path.exists("annotated_images"):
+        os.mkdir("annotated_images")
 
     with torch.no_grad():
         for images, targets in track(test_loader, description=f"[cyan]Model Testing...[/cyan]"):
@@ -145,11 +152,14 @@ if __name__ == "__main__":
             all_predictions.extend(outputs)
             all_targets.extend(targets)
 
+            # Visualize the images
+            for index, (image, target) in enumerate(zip(images, targets)):
+                bbox_visualizer(image, target, label_strings, save_path=f"annotated_images/image_{index}.jpg")
+
     # Calculate the accuracy
-    with console.status("[bold green]Calculating Test Accuracy...[/bold green]"):
+    with logger.console.status("[bold green]Calculating Test Accuracy...[/bold green]"):
         accuracy = calculate_accuracy(all_predictions, all_targets)
-    console.log(f"[bold green]Test Accuracy: {accuracy}[/bold green]")
-    log_str += f"Test Accuracy: {accuracy}\n"
+    logger.console_log(f"[bold green]Test Accuracy: {accuracy}[/bold green]")
 
     # Logging the results
     # Create the results directory
@@ -164,14 +174,15 @@ if __name__ == "__main__":
         json.dump(config, f, indent=4)
 
     # Backup the main.py file
-    os.system("cp main.py {}".format(os.path.join(log_dir, "main.py.bak")))
+    shutil.copy("main.py", os.path.join(log_dir, "main.py.bak"))
 
     # Save the model
-    os.system("cp model_weights/{} {}".format(config["model"]["save_path"], log_dir))
+    shutil.copy("model_weights", log_dir)
 
-    # Save the results
-    with open(os.path.join(log_dir, "results.txt"), "w") as f:
-        f.write(log_str)
+    # Save the annotated images
+    shutil.copytree("annotated_images", os.path.join(log_dir, "annotated_images"))
 
-
+    # Save the logs
+    logger.set_log_path(log_dir)
+    logger.export_log()
 
