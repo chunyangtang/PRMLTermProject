@@ -58,7 +58,7 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
 
         bboxes, labels = [], []
         for bbox, label in zip(transformed["bboxes"], transformed["labels"]):
-            if not bbox.empty:
+            if len(bbox) == 4:
                 bboxes.append(bbox)
                 labels.append(label)
 
