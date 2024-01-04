@@ -2,7 +2,6 @@ import json
 import os
 import shutil
 from datetime import datetime
-import copy
 
 import torch
 from torch.utils.data import DataLoader, ConcatDataset
@@ -92,8 +91,7 @@ if __name__ == "__main__":
             with logger.console.status("[bold green]Augmenting the training dataset...[/bold green]"):
                 # Augment the training dataset
                 image_augmented, target_augmented = [], []
-                train_dataset_copy = copy.deepcopy(train_dataset)
-                for image, target in train_dataset_copy:
+                for image, target in train_dataset:
                     image, boxes, labels = image_transform({"augment": True}, image,
                                                            bboxes=target["boxes"], labels=target["labels"])
                     image_augmented.append(image)
@@ -106,8 +104,18 @@ if __name__ == "__main__":
                                           shuffle=True, collate_fn=collate_fn)
 
         for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}     [/cyan]"):
-            images = list(image.to(DEVICE) for image in images)
-            targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
+            # images = list(image.to(DEVICE) for image in images)
+            # targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
+            images, targets = [], []
+            for image, target in zip(images, targets):
+                image = image.to(DEVICE)
+                target = {k: v.to(DEVICE) for k, v in target.items()}
+                if target["boxes"].shape[0] == 0:
+                    continue
+                images.append(image)
+                targets.append(target)
+            if len(images) == 0:
+                continue
             loss_dict = model(images, targets)
             losses = sum(loss for loss in loss_dict.values())
 
