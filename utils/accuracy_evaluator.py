@@ -75,111 +75,55 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
     :return: the mAP score, scalar
     """
 
-    # try:
-    if True:
-        from pycocotools.coco import COCO
-        from pycocotools.cocoeval import COCOeval
+    # store AP values for each class
+    ap_per_class = defaultdict(list)
 
-        def convert_to_coco_format(all_predictions, all_targets):
-            coco_predictions = []
-            coco_targets = []
+    # iterate through each image
+    for preds, targets in zip(all_predictions, all_targets):
+        if len(preds["boxes"]) == 0 or len(targets["boxes"]) == 0:
+            continue
+        # process each class
+        for class_id in range(1, max(preds["labels"])+1):
+            pred_scores = preds["scores"][preds["labels"] == class_id]  # scores of the predicted boxes
+            # filter out the predictions in score order and score greater than the threshold
+            pred_scores, sort_ind = pred_scores.sort(descending=True)
 
-            for image_id, (preds, targets) in enumerate(zip(all_predictions, all_targets)):
-                pred_boxes = preds["boxes"].tolist()
-                pred_boxes = [[pred_box[0], pred_box[1],
-                              pred_box[2] - pred_box[0], pred_box[3] - pred_box[1]] for pred_box in pred_boxes]
-                for index, pred_box in enumerate(pred_boxes):
-                    coco_pred = {
-                        "id": len(coco_predictions),
-                        "image_id": image_id,
-                        "bbox": pred_box,
-                        "score": preds["scores"][index].item(),
-                        "category_id": preds["labels"][index].item()
-                    }
-                    coco_predictions.append(coco_pred)
+            pred_boxes = preds["boxes"][preds["labels"] == class_id][sort_ind]
+            pred_boxes = pred_boxes[pred_scores >= score_threshold]  # predicted boxes
 
-                for index, gt_box in enumerate(targets["boxes"].tolist()):
-                    coco_target = {
-                        "id": len(coco_targets),
-                        "image_id": image_id,
-                        "bbox": gt_box,
-                        "category_id": targets["labels"][index].item()
-                    }
-                    coco_targets.append(coco_target)
+            gt_boxes = targets["boxes"][targets["labels"] == class_id]  # ground truth boxes
+            gt_boxes_matched = np.zeros(len(gt_boxes))  # whether the ground truth box is matched
 
-            return coco_predictions, coco_targets
-
-        all_predictions, all_targets = convert_to_coco_format(all_predictions, all_targets)
-
-        # Convert to COCO format
-        coco_gt = COCO()
-        coco_gt.dataset = {'annotations': all_targets}
-        coco_gt.createIndex()
-
-        coco_preds = coco_gt.loadRes(all_predictions)
-
-        # Initialize COCOeval object
-        coco_eval = COCOeval(cocoGt=coco_gt, cocoDt=coco_preds, iouType='bbox')
-
-        # Run COCO evaluation
-        coco_eval.evaluate()
-        coco_eval.accumulate()
-        coco_eval.summarize()
-
-        # return coco_eval.stats[0]  # return mAP
-        print(f"COCO_mAP: {coco_eval.stats[0]}")
-
-    # except ImportError:
-    if True:
-        # store AP values for each class
-        ap_per_class = defaultdict(list)
-
-        # iterate through each image
-        for preds, targets in zip(all_predictions, all_targets):
-            if len(preds["boxes"]) == 0 or len(targets["boxes"]) == 0:
+            # if no prediction or ground truth, skip
+            if len(pred_boxes) == 0 or len(gt_boxes) == 0:
                 continue
-            # process each class
-            for class_id in range(1, max(preds["labels"])+1):
-                pred_scores = preds["scores"][preds["labels"] == class_id]  # scores of the predicted boxes
-                # filter out the predictions in score order and score greater than the threshold
-                pred_scores, sort_ind = pred_scores.sort(descending=True)
 
-                pred_boxes = preds["boxes"][preds["labels"] == class_id][sort_ind]
-                pred_boxes = pred_boxes[pred_scores >= score_threshold]  # predicted boxes
+            # calculate IoU and metrics for each predicted box
+            tp = np.zeros(len(pred_boxes))
+            fp = np.zeros(len(pred_boxes))
+            for i, pred_box in enumerate(pred_boxes):  # iterate through each predicted box
+                ious = [calculate_iou(pred_box, gt_box) for gt_box in gt_boxes]
+                best_match = torch.argmax(torch.tensor(ious)).cpu() if ious else None
+                max_iou = ious[best_match] if ious else 0  # highest IoU, i.e. best match
 
-                gt_boxes = targets["boxes"][targets["labels"] == class_id]  # ground truth boxes
-                gt_boxes_matched = np.zeros(len(gt_boxes))  # whether the ground truth box is matched
+                # if the highest IoU is above the threshold, count as true positive, else false positive
+                if max_iou >= iou_threshold and gt_boxes_matched[best_match] == 0:
+                    tp[i] = 1
+                    gt_boxes_matched[best_match] = 1  # mark as matched
+                else:
+                    fp[i] = 1
 
-                # if no prediction or ground truth, skip
-                if len(pred_boxes) == 0 or len(gt_boxes) == 0:
-                    continue
+            # accumulate and compute precision and recall
+            acc_fp = np.cumsum(fp)  # accumulated false positive (e.g.[0, 1, 1, 2, 2, 2, 3, 3, 4, 5, ...])
+            acc_tp = np.cumsum(tp)  # accumulated true positive
+            recall = acc_tp / len(gt_boxes)
+            assert (recall <= 1).all(), "Recall cannot be greater than 1."
+            precision = np.divide(acc_tp, (acc_fp + acc_tp))
 
-                # calculate IoU and metrics for each predicted box
-                tp = np.zeros(len(pred_boxes))
-                fp = np.zeros(len(pred_boxes))
-                for i, pred_box in enumerate(pred_boxes):  # iterate through each predicted box
-                    ious = [calculate_iou(pred_box, gt_box) for gt_box in gt_boxes]
-                    best_match = torch.argmax(torch.tensor(ious)).cpu() if ious else None
-                    max_iou = ious[best_match] if ious else 0  # highest IoU, i.e. best match
+            # calculate and store AP
+            ap = calculate_ap(precision, recall)
+            ap_per_class[class_id].append(ap)
 
-                    # if the highest IoU is above the threshold, count as true positive, else false positive
-                    if max_iou >= iou_threshold and gt_boxes_matched[best_match] == 0:
-                        tp[i] = 1
-                        gt_boxes_matched[best_match] = 1  # mark as matched
-                    else:
-                        fp[i] = 1
-
-                # accumulate and compute precision and recall
-                acc_fp = np.cumsum(fp)  # accumulated false positive (e.g.[0, 1, 1, 2, 2, 2, 3, 3, 4, 5, ...])
-                acc_tp = np.cumsum(tp)  # accumulated true positive
-                recall = acc_tp / len(gt_boxes)
-                assert (recall <= 1).all(), "Recall cannot be greater than 1."
-                precision = np.divide(acc_tp, (acc_fp + acc_tp))
-
-                # calculate and store AP
-                ap = calculate_ap(precision, recall)
-                ap_per_class[class_id].append(ap)
-
-        # calculate mean of all APs for mAP
-        mAP = np.mean([np.mean(ap) for ap in ap_per_class.values()])
-        return mAP
+    # calculate mean of all APs for mAP
+    mAP = np.mean([np.mean(ap) for ap in ap_per_class.values()])
+    return mAP

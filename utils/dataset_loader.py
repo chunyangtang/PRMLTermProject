@@ -129,9 +129,13 @@ def load_dataset(configs: dict):
             if configs["image_transform"]["transform"]:
                 img, bboxes = image_transform(configs["image_transform"], img, bboxes)
 
+            # Creating image id
+            img_id = int(os.path.splitext(img_train)[0])
+            img_id = torch.tensor([img_id])
+
             # adding the image and label to the dataset
             train_images.append(img)
-            train_labels.append({"boxes": bboxes, "labels": labels, "image_id": os.path.splitext(img_train)[0]})
+            train_labels.append({"boxes": bboxes, "labels": labels, "image_id": img_id})
 
         for img_test, label_test in zip(test_images_filename, test_labels_filename):
             # updating the progress bar
@@ -157,8 +161,9 @@ def load_dataset(configs: dict):
             test_images.append(img)
             test_labels.append({"boxes": bboxes, "labels": labels, "image_id": os.path.splitext(img_test)[0]})
 
-    with Console() as console:
-        console.log(f"[bold green]All labels are: \n{label_strings}[/bold green]")
+    # Duplicated with the one in main.py
+    # with Console() as console:
+    #     console.log(f"[bold green]All labels are: \n{label_strings}[/bold green]")
 
     with Console() as console, console.status("[bold green]Working on creating datasets...") as status:
         # converting str labels to torch.IntTensor labels

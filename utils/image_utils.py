@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import albumentations as A
 
 
 def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.Tensor = None) -> (torch.Tensor,
@@ -20,28 +21,38 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
 
     h_orig, w_orig = image.shape[1], image.shape[2]
 
-    transform_components = []
-
+    # image resizing
     should_resize = "resize" in transform_config
     h_new, w_new = h_orig, w_orig
     if should_resize:
         h_new, w_new = transform_config["resize"]
-        transform_components.append(transforms.Resize((h_new, w_new)))
-
-    # image transformation
-    transform = transforms.Compose(transform_components)
-    image = transform(image)
+        transform = transforms.Compose([transforms.Resize((h_new, w_new))])
+        image = transform(image)
+        # bounding box transformation
+        if bboxes is not None:
+            bboxes[:, 0] = bboxes[:, 0] / w_orig * w_new
+            bboxes[:, 1] = bboxes[:, 1] / h_orig * h_new
+            bboxes[:, 2] = bboxes[:, 2] / w_orig * w_new
+            bboxes[:, 3] = bboxes[:, 3] / h_orig * h_new
 
     # image normalization
     if "normalize" in transform_config and transform_config["normalize"]:
         image = image / 255.0
 
-    # bounding box transformation
-    if should_resize and bboxes is not None:
-        bboxes[:, 0] = bboxes[:, 0] / w_orig * w_new
-        bboxes[:, 1] = bboxes[:, 1] / h_orig * h_new
-        bboxes[:, 2] = bboxes[:, 2] / w_orig * w_new
-        bboxes[:, 3] = bboxes[:, 3] / h_orig * h_new
+    # image transformation
+    if "augment" in transform_config and transform_config["augment"]:
+        # albumentations augmentation
+        transform = A.Compose([
+            A.HorizontalFlip(p=0.5),
+            A.RandomBrightnessContrast(p=0.2),
+            A.RandomGamma(p=0.2),
+            A.RandomRotate90(p=0.5),
+            A.ShiftScaleRotate(p=0.5),
+            A.RandomResizedCrop(h_new, w_new, scale=(0.5, 1.0), ratio=(0.75, 1.3333333333333333), p=0.5),
+        ], bbox_params=A.BboxParams(format='pascal_voc'))
+        transformed = transform(image=image.permute(1, 2, 0).numpy(), bboxes=bboxes.numpy(), labels=np.ones(len(bboxes)))
+        image = torch.FloatTensor(transformed["image"]).permute(2, 0, 1)
+        bboxes = torch.FloatTensor(transformed["bboxes"])
 
     return image, bboxes
 
@@ -117,7 +128,10 @@ def bbox_visualizer(image: torch.Tensor, targets: dict, label_strings: list, sav
 # For testing
 if __name__ == "__main__":
     import os
-    print(os.getcwd())
+    if os.getcwd().endswith("PRMLTermProject"):
+        os.chdir("utils")
+    import sys
+    sys.path.append("..")
     # Test bbox_visualizer
     import torchvision
     image = torchvision.io.read_image("../dataset/JPEGImages/2008_007666.jpg")  # 2010_005654.jpg")

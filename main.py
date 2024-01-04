@@ -3,7 +3,7 @@ import os
 import shutil
 from datetime import datetime
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 
 # https://pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
@@ -11,9 +11,10 @@ from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from rich.traceback import install
 from rich.progress import track
 
-from utils.dataset_loader import load_dataset
+from utils.dataset_loader import load_dataset, MyImageDataset
 from utils.accuracy_evaluator import calculate_accuracy
 from utils.image_utils import bbox_visualizer
+from utils.image_utils import image_transform
 from utils.logging_utils import MyLogger
 
 
@@ -48,6 +49,8 @@ if __name__ == "__main__":
     # Loading the dataset
     train_dataset, val_dataset, test_dataset, label_strings = load_dataset(config["data"])
 
+    logger.console_log(f"[bold green]All labels are: \n{label_strings}[/bold green]")
+
     # Create data loaders
     def collate_fn(batch):
         return tuple(zip(*batch))
@@ -81,9 +84,24 @@ if __name__ == "__main__":
 
     for epoch in range(num_epochs):
         model.train()
+
+        # Creating augmented dataset
+        if config["data"]["augmentation"]["augment"]:
+            # Augment the training dataset
+            image_augmented, target_augmented = [], []
+            for image, target in train_dataset:
+                image, boxes = image_transform({"augment": True}, image, bboxes=target["boxes"])
+                image_augmented.append(image)
+                target_augmented.append({"boxes": boxes, "labels": target["labels"]})
+
+            # Concatenate the augmented dataset with the original dataset
+            train_dataset_augmented = MyImageDataset(image_augmented, target_augmented)
+            train_dataset_concat = ConcatDataset([train_dataset, train_dataset_augmented])
+            train_loader = DataLoader(train_dataset_concat, batch_size=config["model"]["batch_size"],
+                                      shuffle=True, collate_fn=collate_fn)
+
         for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}     [/cyan]"):
             images = list(image.to(DEVICE) for image in images)
-            image_ids = [target.pop("image_id") for target in targets]
             targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
             loss_dict = model(images, targets)
             losses = sum(loss for loss in loss_dict.values())
