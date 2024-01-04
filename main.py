@@ -106,17 +106,17 @@ if __name__ == "__main__":
         for images, targets in track(train_loader, description=f"[cyan]Epoch  {epoch+1} / {num_epochs}     [/cyan]"):
             # images = list(image.to(DEVICE) for image in images)
             # targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
-            images, targets = [], []
+            images_filtered, targets_filtered = [], []
             for image, target in zip(images, targets):
                 image = image.to(DEVICE)
                 target = {k: v.to(DEVICE) for k, v in target.items()}
                 if target["boxes"].shape[0] == 0:
                     continue
-                images.append(image)
-                targets.append(target)
-            # if len(images) == 0:
-            #     continue
-            loss_dict = model(images, targets)
+                images_filtered.append(image)
+                targets_filtered.append(target)
+            if len(images) == 0:
+                continue
+            loss_dict = model(images_filtered, targets_filtered)
             losses = sum(loss for loss in loss_dict.values())
 
             optimizer.zero_grad()
