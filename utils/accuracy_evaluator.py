@@ -75,7 +75,8 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
     :return: the mAP score, scalar
     """
 
-    try:
+    # try:
+    if True:
         from pycocotools.coco import COCO
         from pycocotools.cocoeval import COCOeval
 
@@ -84,23 +85,25 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
             coco_targets = []
 
             for image_id, (preds, targets) in enumerate(zip(all_predictions, all_targets)):
-                for pred in preds:
-                    pred_boxes = pred["boxes"].tolist()
-                    pred_boxes = [[pred_box[0], pred_box[1],
-                                  pred_box[2] - pred_box[0], pred_box[3] - pred_box[1]] for pred_box in pred_boxes]
+                pred_boxes = preds["boxes"].tolist()
+                pred_boxes = [[pred_box[0], pred_box[1],
+                              pred_box[2] - pred_box[0], pred_box[3] - pred_box[1]] for pred_box in pred_boxes]
+                for index, pred_box in enumerate(pred_boxes):
                     coco_pred = {
+                        "id": len(coco_predictions),
                         "image_id": image_id,
-                        "bbox": pred_boxes,
-                        "score": pred["scores"].item(),
-                        "category_id": pred["labels"].item()
+                        "bbox": pred_box,
+                        "score": preds["scores"][index].item(),
+                        "category_id": preds["labels"][index].item()
                     }
                     coco_predictions.append(coco_pred)
 
-                for target in targets:
+                for index, gt_box in enumerate(targets["boxes"].tolist()):
                     coco_target = {
+                        "id": len(coco_targets),
                         "image_id": image_id,
-                        "bbox": target["boxes"].tolist(),
-                        "category_id": target["labels"].item()
+                        "bbox": gt_box,
+                        "category_id": targets["labels"][index].item()
                     }
                     coco_targets.append(coco_target)
 
@@ -123,10 +126,11 @@ def calculate_accuracy(all_predictions, all_targets, iou_threshold=0.5, score_th
         coco_eval.accumulate()
         coco_eval.summarize()
 
-        return coco_eval.stats[0]  # return mAP
+        # return coco_eval.stats[0]  # return mAP
+        print(f"COCO_mAP: {coco_eval.stats[0]}")
 
-    except ImportError:
-
+    # except ImportError:
+    if True:
         # store AP values for each class
         ap_per_class = defaultdict(list)
 

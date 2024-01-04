@@ -133,7 +133,7 @@ if __name__ == "__main__":
                      'motorbike', 'bus', 'person']
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None, num_classes=91,
                                                                  trainable_backbone_layers=3)
-    model.load_state_dict(torch.load('../model_weights/fasterrcnn_resnet50_fpn_weights.pth',
+    model.load_state_dict(torch.load('../model_weights/fasterrcnn_resnet50_fpn_weights_best.pth',
                                      map_location=torch.device('cpu')))
 
     bboxes, labels = image_inference(model, image, {"normalize": True})
