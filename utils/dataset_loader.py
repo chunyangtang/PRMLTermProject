@@ -131,7 +131,7 @@ def load_dataset(configs: dict):
 
             # adding the image and label to the dataset
             train_images.append(img)
-            train_labels.append({"boxes": bboxes, "labels": labels})
+            train_labels.append({"boxes": bboxes, "labels": labels, "image_id": os.path.splitext(img_train)[0]})
 
         for img_test, label_test in zip(test_images_filename, test_labels_filename):
             # updating the progress bar
@@ -155,7 +155,7 @@ def load_dataset(configs: dict):
 
             # adding the image and label to the dataset
             test_images.append(img)
-            test_labels.append({"boxes": bboxes, "labels": labels})
+            test_labels.append({"boxes": bboxes, "labels": labels, "image_id": os.path.splitext(img_test)[0]})
 
     with Console() as console:
         console.log(f"[bold green]All labels are: \n{label_strings}[/bold green]")
