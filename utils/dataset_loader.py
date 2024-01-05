@@ -203,6 +203,18 @@ if __name__ == "__main__":
         "img_format": ".jpg",
         "label_format": ".xml",
 
+        "image_transform": {
+            "transform": True,
+
+            "normalize": True
+        },
+
+        "augmentation": {
+            "augment": True
+        },
+
+        "val_proportion": 0.2,
+
         "comment": "The paths and critical labels of the dataset."
     }
 

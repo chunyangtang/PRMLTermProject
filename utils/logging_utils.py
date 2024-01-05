@@ -1,6 +1,8 @@
 import os
+import re
 
 import matplotlib.pyplot as plt
+import numpy as np
 from rich.console import Console
 
 
@@ -77,6 +79,72 @@ class MyLogger:
         with open(os.path.join(log_path, "log.txt"), "w") as f:
             f.write(self.log_str)
 
+    @staticmethod
+    def plot_from_log(log_path: str, export_path: str = None):
+        """
+        Plot the training losses and validation accuracy from the log string.
+        :param log_path: The path to the log file.
+        :param export_path: The path to export the figure, None for not exporting.
+        """
+        log_path = os.path.abspath(log_path)
+        if export_path is None:
+            export_path = os.path.dirname(log_path)
+        # Read the log file
+        with open(log_path, "r") as f:
+            logs = f.read()
+
+        # Splitting the log by lines
+        log_lines = logs.strip().split("\n")
+        losses = []
+        accuracies = []
+
+        # Regex pattern to match floating point numbers
+        pattern = r"[-+]?\d*\.\d+|\d+"
+
+        # Extracting loss and accuracy from each line
+        for line in log_lines:
+            parts = line.split(", ")
+            # Make sure the line is as expected
+            if len(parts) == 3:
+                # Extracting numeric values using regex
+                loss_match = re.findall(pattern, parts[1])
+                accuracy_match = re.findall(pattern, parts[2])
+
+                # Ensure that there's a match and append the numeric part to the respective lists
+                if loss_match:
+                    losses.append(float(loss_match[0]))
+                if accuracy_match:
+                    accuracies.append(float(accuracy_match[0]))
+
+        # Plotting the loss and accuracy
+        # Simple function for moving average
+        def moving_average(data, window_size):
+            # padding
+            data = np.pad(data, (window_size // 2, window_size // 2), mode='edge')
+            return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
+
+        # Create a figure and a set of subplots for training losses and validation accuracy
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel("Epoch")
+        ax1.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        ax1.set_ylabel("Training Loss")
+        # ax1.plot(self.losses_per_epoch, color="tab:blue", label="Training Loss")
+        ax1.plot(losses, label='Raw Training Loss', color='tab:blue', alpha=0.3)
+        ax1.plot(moving_average(losses, 5), label='Smoothed Training Loss', color='tab:blue')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel("Validation Accuracy")
+        ax2.plot(accuracies, label='Raw Accuracy', color='tab:orange', alpha=0.3)
+        ax2.plot(moving_average(accuracies, 5), label='Smoothed Accuracy', color='tab:orange')
+
+        lines, labels = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        plt.legend(lines + lines2, labels + labels2, loc="upper left")
+
+        fig.tight_layout()
+        plt.savefig(os.path.join(export_path, "training_losses_val_accuracy_smoothed.png"))
+
+
 # For testing
 if __name__ == "__main__":
     logger = MyLogger()
@@ -88,4 +156,6 @@ if __name__ == "__main__":
     logger.log_epoch(0.000006, 0.95)
     logger.log_epoch(0.0000007, 0.99)
 
-    logger.export_log(".")
+    # logger.export_log(".")
+
+    MyLogger.plot_from_log("log.txt", ".")

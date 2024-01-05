@@ -121,9 +121,9 @@ if __name__ == "__main__":
                 target = {k: v.to(DEVICE) for k, v in target.items()}
                 if target["boxes"].shape[0] == 0:
                     continue
-                for box in target["boxes"]:
+                for i, box in enumerate(target["boxes"]):
                     if (box[2] - box[0]) <= 1 or (box[3] - box[1]) <= 1:
-                        continue
+                        target["boxes"] = torch.cat((target["boxes"][:i], target["boxes"][i+1:]))  # remove the box
                 images_filtered.append(image)
                 targets_filtered.append(target)
             if len(images) == 0:

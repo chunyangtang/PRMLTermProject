@@ -163,4 +163,6 @@ cython_debug/
 local_*
 model_weights/
 annotated_images/
+augment_imgs/
 logs/
+utils/log.txt

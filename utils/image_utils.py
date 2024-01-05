@@ -49,15 +49,12 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
 
         # albumentations augmentation
         transform = A.Compose([
-            A.RandomResizedCrop(height=h_new, width=w_new, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=0.0),
-            A.Blur(p=0.01),
-            A.MedianBlur(p=0.01),
-            A.ToGray(p=0.01),
-            A.CLAHE(p=0.01),
-            A.RandomBrightnessContrast(p=0.0),
-            A.RandomGamma(p=0.0),
-            A.ImageCompression(quality_lower=75, p=0.0),
-            A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)  # HSV color-space augment
+            A.HorizontalFlip(p=0.5),
+            A.RandomBrightnessContrast(p=0.2),
+            A.RandomGamma(p=0.2),
+            A.RandomRotate90(p=0.5),
+            A.ShiftScaleRotate(p=0.5),
+            A.RandomResizedCrop(h_new, w_new, scale=(0.5, 1.0), ratio=(0.75, 1.3333333333333333), p=0.5),
         ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
         transformed = transform(image=image.permute(1, 2, 0).numpy(), bboxes=bboxes.numpy(),
                                 labels=labels.numpy())
@@ -132,6 +129,8 @@ def bbox_visualizer(image: torch.Tensor, targets: dict, label_strings: list, sav
     for bbox, label in zip(bboxes, labels):
         bbox = bbox.cpu().numpy()
         label = label.cpu().numpy()
+        if label >= num_labels:
+            continue
         color = colors[label]
         rect = patches.Rectangle((bbox[0], bbox[1]), bbox[2] - bbox[0], bbox[3] - bbox[1],
                                  linewidth=2, edgecolor=color, facecolor='none')
@@ -148,31 +147,125 @@ def bbox_visualizer(image: torch.Tensor, targets: dict, label_strings: list, sav
 # For testing
 if __name__ == "__main__":
     import os
-    if os.getcwd().endswith("PRMLTermProject"):
-        os.chdir("utils")
-    import sys
-    sys.path.append("..")
-    # Test bbox_visualizer
+    # if os.getcwd().endswith("PRMLTermProject"):
+    #     os.chdir("utils")
+    # import sys
+    # sys.path.append("..")
+    # # Test bbox_visualizer
     import torchvision
-    image = torchvision.io.read_image("../dataset/JPEGImages/2008_007666.jpg")  # 2010_005654.jpg")
-    from utils.dataset_loader import xml_label_parser
-    bboxes, label_strings = xml_label_parser("../dataset/Annotations/2008_007666.xml")
-    labels = [label_strings.index(label) for label in label_strings]
-    targets = {"boxes": torch.FloatTensor(bboxes), "labels": torch.LongTensor(labels)}
-    bbox_visualizer(image, targets, label_strings)
-
+    # image = torchvision.io.read_image("../dataset/JPEGImages/2008_007666.jpg")  # 2010_005654.jpg")
+    # from utils.dataset_loader import xml_label_parser
+    # bboxes, label_strings = xml_label_parser("../dataset/Annotations/2008_007666.xml")
+    # labels = [label_strings.index(label) for label in label_strings]
+    # targets = {"boxes": torch.FloatTensor(bboxes), "labels": torch.LongTensor(labels)}
+    # bbox_visualizer(image, targets, label_strings)
+    #
     # Test inference
-    label_strings = ['background', 'bicycle', 'cat', 'tvmonitor', 'pottedplant', 'car', 'bird', 'sheep', 'sofa',
-                     'chair', 'dog', 'boat', 'train', 'aeroplane', 'diningtable', 'bottle', 'horse', 'cow',
-                     'motorbike', 'bus', 'person']
+    from utils.dataset_loader import load_dataset
+    import re
+    from rich.progress import track
+
+    os.chdir("..")
+
+    log_path = "/Users/tcy/Downloads/fasterrcnn_240105-114501-943759_100epochs_lrschedule_noaugment/"
+
+    log_txt = os.path.join(log_path, "log.txt")
+
+    # Read the log file
+    with open(log_txt, "r") as f:
+        logs = f.read()
+
+    # Splitting the log by lines
+    log_lines = logs.strip().split("\n")
+
+    # Variable to store labels
+    label_strings = []
+
+    # Search for the line with labels
+    for i, line in enumerate(log_lines):
+        if "All labels are: " in line:
+            # Extracting the next line which contains the labels
+            if i + 1 < len(log_lines):
+                labels_line = log_lines[i + 1]  # Next line contains the labels
+                label_strings = re.findall(r"'(.*?)'", labels_line)
+            break
+
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None, num_classes=91,
                                                                  trainable_backbone_layers=3)
-    model.load_state_dict(torch.load('../model_weights/fasterrcnn_resnet50_fpn_weights_best.pth',
+    model.load_state_dict(torch.load(os.path.join(log_path, "model_weights", "fasterrcnn_resnet50_fpn_weights_best.pth"),
                                      map_location=torch.device('cpu')))
 
-    bboxes, labels = image_inference(model, image, {"normalize": True})
-    targets = {"boxes": bboxes, "labels": labels}
-    bbox_visualizer(image, targets, label_strings)
+    config = {
+        "img_path": "./dataset/JPEGImages/",
+        "label_path": "./dataset/Annotations/",
+
+        "train_start": "2007_000559",
+        "train_end": "2012_001051",
+        "test_start": "2012_001055",
+        "test_end": "2012_004308",
+
+        "img_format": ".jpg",
+        "label_format": ".xml",
+
+        "image_transform": {
+            "transform": True,
+
+            "normalize": True
+        },
+
+        "augmentation": {
+            "augment": True
+        },
+        "val_proportion": 0.2
+    }
+
+    train_dataset, val_dataset, test_dataset, label_strs = load_dataset(config)
+    for image, target in track(test_dataset):
+        bboxes, labels = image_inference(model, image)
+        targets = {"boxes": bboxes, "labels": labels}
+        bbox_visualizer(image, targets, label_strings,
+                        save_path=os.path.join(log_path, "inference_img", f"{target['image_id']}_inference.jpg"))
+
+    # # Tranform test images and labels
+    # os.chdir("..")
+    # config = {
+    #     "img_path": "./dataset/JPEGImages/",
+    #     "label_path": "./dataset/Annotations/",
+    #
+    #     "train_start": "2007_000559",
+    #     "train_end": "2012_001051",
+    #     "test_start": "2012_001055",
+    #     "test_end": "2012_004308",
+    #
+    #     "img_format": ".jpg",
+    #     "label_format": ".xml",
+    #
+    #     "image_transform": {
+    #       "transform": True,
+    #
+    #       "normalize": True
+    #     },
+    #
+    #     "augmentation": {
+    #       "augment": True
+    #     },
+    #
+    #     "val_proportion": 0.2,
+    #
+    #     "comment": "The paths and critical labels of the dataset."
+    # }
+    # from utils.dataset_loader import load_dataset
+    # train_dataset, val_dataset, test_dataset, label_strs = load_dataset(config)
+    # # Augment the training dataset
+    # from rich.progress import track
+    # os.makedirs("augment_imgs", exist_ok=True)
+    # for image, target in track(train_dataset):
+    #     bbox_visualizer(image, target, label_strs,
+    #                     save_path=f"augment_imgs/{target['image_id'].item()}_ori.png")
+    #     image, boxes, labels = image_transform({"augment": True}, image,
+    #                                            bboxes=target["boxes"], labels=target["labels"])
+    #     bbox_visualizer(image, {"boxes": boxes, "labels": labels}, label_strs,
+    #                     save_path=f"augment_imgs/{target['image_id'].item()}_aug.png")
 
 
 
