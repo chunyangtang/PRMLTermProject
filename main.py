@@ -198,27 +198,30 @@ if __name__ == "__main__":
     logger.console_log(f"[bold green]Test Accuracy: {accuracy}[/bold green]")
 
     # Logging the results
-    # Create the results directory
-    if not os.path.exists("logs"):
-        os.mkdir("logs")
-    log_dir = os.path.join("logs", datetime.now().strftime("{}_%y%m%d-%H%M%S-%f"
-                                                           .format(config["logger"]["log_folder"])))
-    os.mkdir(log_dir)
+    with logger.console.status("[bold green]Logging the results...[/bold green]"):
+        # Create the results directory
+        if not os.path.exists("logs"):
+            os.mkdir("logs")
+        log_dir = os.path.join("logs", datetime.now().strftime("{}_%y%m%d-%H%M%S-%f"
+                                                               .format(config["logger"]["log_folder"])))
+        os.mkdir(log_dir)
 
-    # Save the config file
-    with open(os.path.join(log_dir, "config.json"), "w") as f:
-        json.dump(config, f, indent=4)
+        # Save the config file
+        with open(os.path.join(log_dir, "config.json"), "w") as f:
+            json.dump(config, f, indent=4)
 
-    # Backup the main.py file
-    shutil.copy("main.py", os.path.join(log_dir, "main.py.bak"))
+        # Backup the main.py file
+        shutil.copy("main.py", os.path.join(log_dir, "main.py.bak"))
 
-    # Save the model
-    shutil.copytree("model_weights", os.path.join(log_dir, "model_weights"))
+        # Save the model
+        shutil.copytree("model_weights", os.path.join(log_dir, "model_weights"))
 
-    # Save the annotated images
-    shutil.copytree("annotated_images", os.path.join(log_dir, "annotated_images"))
+        # Save the annotated images
+        shutil.copytree("annotated_images", os.path.join(log_dir, "annotated_images"))
 
-    # Save the logs
-    logger.set_log_path(log_dir)
-    logger.export_log()
+        # Save the logs
+        logger.set_log_path(log_dir)
+        logger.export_log()
+
+    logger.console_log(f"[bold green]Results saved at {log_dir}[/bold green]")
 
