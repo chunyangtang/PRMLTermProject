@@ -112,6 +112,9 @@ if __name__ == "__main__":
                 target = {k: v.to(DEVICE) for k, v in target.items()}
                 if target["boxes"].shape[0] == 0:
                     continue
+                for box in target["boxes"]:
+                    if box[0] >= box[2] or box[1] >= box[3]:
+                        continue
                 images_filtered.append(image)
                 targets_filtered.append(target)
             if len(images) == 0:
@@ -209,7 +212,7 @@ if __name__ == "__main__":
     shutil.copy("main.py", os.path.join(log_dir, "main.py.bak"))
 
     # Save the model
-    shutil.copy("model_weights", log_dir)
+    shutil.copytree("model_weights", log_dir)
 
     # Save the annotated images
     shutil.copytree("annotated_images", os.path.join(log_dir, "annotated_images"))

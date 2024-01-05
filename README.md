@@ -20,7 +20,7 @@ in `Annotations/` and images in `JPEGImages/`, each .jpg image have a correspond
 As PyTorch compatability varies on different platforms, we do not provide an `requirements.txt` file. 
 Please manually install the compatible version of PyTorch and other dependencies as follows:
 ```
-torch torchvision numpy matplotlib rich
+torch torchvision numpy matplotlib rich albumentations
 ```
 As for PyTorch version, we develop the project under `2.0.1`, but it should work on other versions as well.
 
