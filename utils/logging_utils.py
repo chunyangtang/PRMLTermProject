@@ -68,7 +68,7 @@ class MyLogger:
 
         lines, labels = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        plt.legend(lines + lines2, labels + labels2, loc="upper right")
+        plt.legend(lines + lines2, labels + labels2, loc="upper left")
 
         fig.tight_layout()
         plt.savefig(os.path.join(log_path, "training_losses_val_accuracy.png"))
