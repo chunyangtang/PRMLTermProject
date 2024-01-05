@@ -188,8 +188,9 @@ if __name__ == "__main__":
             all_targets.extend(targets)
 
             # Visualize the images
-            for index, (image, target) in enumerate(zip(images, targets)):
-                bbox_visualizer(image, target, label_strings, save_path=f"annotated_images/image_{index}.jpg")
+            for image, target in zip(images, targets):
+                bbox_visualizer(image, target, label_strings,
+                                save_path=f"annotated_images/{target['image_id']}_annotated.jpg")
 
     # Calculate the accuracy
     with logger.console.status("[bold green]Calculating Test Accuracy...[/bold green]"):
