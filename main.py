@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 from datetime import datetime
+import argparse
 
 import torch
 from torch.utils.data import DataLoader, ConcatDataset
@@ -38,9 +39,17 @@ DEVICE = torch.device(device_str)
 
 
 if __name__ == "__main__":
+    # Parse the arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default="config.json", help="The path to the config file.")
+    parser.add_argument("--train_one_epoch", action="store_true",
+                        help="Train the model for only one epoch, overwriting the 'num_epochs' parameter "
+                             "in the configs for debugging.")
+    args = parser.parse_args()
 
+    config_path = args.config
     # Loading the config file
-    with open("config.json", "r") as f:
+    with open(args.config, "r") as f:
         config = json.load(f)
 
     # Print the config file
@@ -76,7 +85,7 @@ if __name__ == "__main__":
     # Training
     logger.console.log("[bold cyan]Begin training...[/bold cyan]")
 
-    num_epochs = config["model"]["num_epochs"]
+    num_epochs = config["model"]["num_epochs"] if not args.train_one_epoch else 1
 
     # for model validation
     best_val_accuracy = float(0)  # Best validation accuracy

@@ -45,15 +45,19 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
     if "augment" in transform_config and transform_config["augment"]:
         # albumentations augmentation
         transform = A.Compose([
-            A.HorizontalFlip(p=0.5),
-            A.RandomBrightnessContrast(p=0.2),
-            A.RandomGamma(p=0.2),
-            A.RandomRotate90(p=0.5),
-            A.ShiftScaleRotate(p=0.5),
-            A.RandomResizedCrop(h_new, w_new, scale=(0.5, 1.0), ratio=(0.75, 1.3333333333333333), p=0.5),
+            A.RandomResizedCrop(height=h_new, width=w_new, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=0.0),
+            A.Blur(p=0.01),
+            A.MedianBlur(p=0.01),
+            A.ToGray(p=0.01),
+            A.CLAHE(p=0.01),
+            A.RandomBrightnessContrast(p=0.0),
+            A.RandomGamma(p=0.0),
+            A.ImageCompression(quality_lower=75, p=0.0),
+            A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)  # HSV color-space augment
         ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
         transformed = transform(image=image.permute(1, 2, 0).numpy(), bboxes=bboxes.numpy(),
-                                labels=labels.numpy())  # Fake labels
+                                labels=labels.numpy())
+
         image = torch.FloatTensor(transformed["image"]).permute(2, 0, 1)
 
         bboxes, labels = [], []
