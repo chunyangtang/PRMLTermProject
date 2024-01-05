@@ -212,7 +212,7 @@ if __name__ == "__main__":
     shutil.copy("main.py", os.path.join(log_dir, "main.py.bak"))
 
     # Save the model
-    shutil.copytree("model_weights", log_dir)
+    shutil.copytree("model_weights", os.path.join(log_dir, "model_weights"))
 
     # Save the annotated images
     shutil.copytree("annotated_images", os.path.join(log_dir, "annotated_images"))
