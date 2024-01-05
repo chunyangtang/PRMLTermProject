@@ -43,6 +43,10 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
 
     # image transformation
     if "augment" in transform_config and transform_config["augment"]:
+        # Restore to uint8 image
+        image = image * 255.0
+        image = image.type(torch.uint8)
+
         # albumentations augmentation
         transform = A.Compose([
             A.RandomResizedCrop(height=h_new, width=w_new, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=0.0),
@@ -58,7 +62,8 @@ def image_transform(transform_config: dict, image: torch.Tensor, bboxes: torch.T
         transformed = transform(image=image.permute(1, 2, 0).numpy(), bboxes=bboxes.numpy(),
                                 labels=labels.numpy())
 
-        image = torch.FloatTensor(transformed["image"]).permute(2, 0, 1)
+        # Transform image back to float tensor
+        image = torch.FloatTensor(transformed["image"] / 255.0).permute(2, 0, 1)
 
         bboxes, labels = [], []
         for bbox, label in zip(transformed["bboxes"], transformed["labels"]):
