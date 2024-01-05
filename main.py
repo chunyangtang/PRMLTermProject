@@ -122,7 +122,7 @@ if __name__ == "__main__":
                 if target["boxes"].shape[0] == 0:
                     continue
                 for box in target["boxes"]:
-                    if box[0] >= box[2] or box[1] >= box[3]:
+                    if (box[2] - box[0]) <= 1 or (box[3] - box[1]) <= 1:
                         continue
                 images_filtered.append(image)
                 targets_filtered.append(target)
