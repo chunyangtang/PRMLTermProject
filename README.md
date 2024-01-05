@@ -21,7 +21,7 @@ in `Annotations/` and images in `JPEGImages/`, each .jpg image have a correspond
 
 On training the model, the following files and folders will be created:
 
-- `model_weights/fasterrcnn_resnet50_fpn_weights_best.pth`: The current model weights with highest validation accuracy.
+- `model_weights/fasterrcnn_resnet50_fpn_weights_best.pth`: The current model weights with the highest validation accuracy.
 
 On testing the model, the following files and folders will be created:
 
@@ -34,6 +34,8 @@ After training and testing the model, the following files and folders will be cr
 
 ## Usage
 
+### Prerequisites
+
 As PyTorch compatability varies on different platforms, we do not provide an `requirements.txt` file. 
 Please manually install the compatible version of PyTorch and other dependencies as follows:
 ```
@@ -41,7 +43,11 @@ torch torchvision numpy matplotlib rich albumentations
 ```
 As for PyTorch version, we develop the project under `2.0.1`, but it should work on other versions as well.
 
-To run the model training and testing, use:
+### Training and Testing
+
+The project rely solely on a configuration file `config.json` for all the parameters and normally doesn't require parameters from command line.
+
+To train and test the model, use:
 ```bash
 python main.py
 ```

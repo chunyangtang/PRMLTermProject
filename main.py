@@ -185,8 +185,8 @@ if __name__ == "__main__":
     all_targets = []
 
     # Save the annotated images
-    if not os.path.exists("annotated_images"):
-        os.mkdir("annotated_images")
+    if not os.path.exists("inference_img"):
+        os.mkdir("inference_img")
 
     with torch.no_grad():
         for images, targets in track(test_loader, description=f"[cyan]Model Testing...[/cyan]"):
@@ -197,9 +197,9 @@ if __name__ == "__main__":
             all_targets.extend(targets)
 
             # Visualize the images
-            for image, target in zip(images, targets):
-                bbox_visualizer(image, target, label_strings,
-                                save_path=f"annotated_images/{target['image_id']}_annotated.jpg")
+            for image, target, output in zip(images, targets, outputs):
+                bbox_visualizer(image, output, label_strings,
+                                save_path=f"inference_img/{target['image_id']}_inference.jpg")
 
     # Calculate the accuracy
     with logger.console.status("[bold green]Calculating Test Accuracy...[/bold green]"):
@@ -226,7 +226,7 @@ if __name__ == "__main__":
         shutil.copytree("model_weights", os.path.join(log_dir, "model_weights"))
 
         # Save the annotated images
-        shutil.copytree("annotated_images", os.path.join(log_dir, "annotated_images"))
+        shutil.copytree("inference_img", os.path.join(log_dir, "inference_img"))
 
         # Save the logs
         logger.set_log_path(log_dir)

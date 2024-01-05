@@ -62,6 +62,7 @@ def xml_label_parser(xml_path: str) -> (list, list):
 
     return bboxes, labels
 
+
 def load_dataset(configs: dict):
     """
     Load the dataset from the given configurations in file path and return the dataset.

@@ -75,6 +75,35 @@ class MyLogger:
         fig.tight_layout()
         plt.savefig(os.path.join(log_path, "training_losses_val_accuracy.png"))
 
+        plt.clf()
+
+        # Simple function for moving average
+        def moving_average(data, window_size):
+            # padding
+            data = np.pad(data, (window_size // 2, window_size // 2), mode='edge')
+            return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
+
+        # Create a figure and a set of subplots for training losses and validation accuracy
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel("Epoch")
+        ax1.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        ax1.set_ylabel("Training Loss")
+        # ax1.plot(self.losses_per_epoch, color="tab:blue", label="Training Loss")
+        ax1.plot(self.losses_per_epoch, label='Raw Training Loss', color='tab:blue', alpha=0.3)
+        ax1.plot(moving_average(self.losses_per_epoch, 5), label='Smoothed Training Loss', color='tab:blue')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel("Validation Accuracy")
+        ax2.plot(self.val_accuracy_per_epoch, label='Raw Accuracy', color='tab:orange', alpha=0.3)
+        ax2.plot(moving_average(self.val_accuracy_per_epoch, 5), label='Smoothed Accuracy', color='tab:orange')
+
+        lines, labels = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        plt.legend(lines + lines2, labels + labels2, loc="upper left")
+
+        fig.tight_layout()
+        plt.savefig(os.path.join(log_path, "training_losses_val_accuracy_smoothed.png"))
+
         # Export log string
         with open(os.path.join(log_path, "log.txt"), "w") as f:
             f.write(self.log_str)
@@ -117,6 +146,26 @@ class MyLogger:
                     accuracies.append(float(accuracy_match[0]))
 
         # Plotting the loss and accuracy
+        # Create a figure and a set of subplots for training losses and validation accuracy
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel("Epoch")
+        ax1.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        ax1.set_ylabel("Training Loss")
+        ax1.plot(losses, color="tab:blue", label="Training Loss")
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel("Validation Accuracy")
+        ax2.plot(accuracies, color="tab:orange", label="Validation Accuracy")
+
+        lines, labels = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        plt.legend(lines + lines2, labels + labels2, loc="upper left")
+
+        fig.tight_layout()
+        plt.savefig(os.path.join(export_path, "training_losses_val_accuracy.png"))
+
+        plt.clf()
+
         # Simple function for moving average
         def moving_average(data, window_size):
             # padding
